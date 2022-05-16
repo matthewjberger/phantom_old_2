@@ -30,6 +30,10 @@ pub trait State {
         Ok(Transition::None)
     }
 
+    fn update_gui(&mut self, _resources: &mut Resources) -> Result<Transition> {
+        Ok(Transition::None)
+    }
+
     fn on_file_dropped(
         &mut self,
         _resources: &mut Resources,
@@ -85,6 +89,7 @@ impl StateMachine {
         }
     }
 
+    // TODO: Make this private, states should have passthrough methods
     pub fn current_state(&mut self) -> Result<&mut Box<(dyn State + 'static)>> {
         self.states
             .last_mut()
@@ -119,6 +124,18 @@ impl StateMachine {
         if self.running {
             let transition = match self.states.last_mut() {
                 Some(state) => state.update(resources)?,
+                None => Transition::None,
+            };
+            self.transition(transition, resources)?;
+        }
+        Ok(())
+    }
+
+    // TODO: Generalize this so it takes an action that returns a transition
+    pub fn update_gui(&mut self, resources: &mut Resources) -> Result<()> {
+        if self.running {
+            let transition = match self.states.last_mut() {
+                Some(state) => state.update_gui(resources)?,
                 None => Transition::None,
             };
             self.transition(transition, resources)?;

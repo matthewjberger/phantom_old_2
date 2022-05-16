@@ -1,7 +1,11 @@
 pub use anyhow;
 pub use bincode;
 pub use bmfont;
+pub use egui;
+pub use egui_wgpu_backend;
+pub use egui_winit_platform;
 pub use env_logger;
+pub use epi;
 pub use gilrs;
 pub use gltf;
 pub use image;

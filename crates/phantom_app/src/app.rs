@@ -11,6 +11,7 @@ use phantom_dependencies::{
         window::{Icon, WindowBuilder},
     },
 };
+use phantom_gui::{Gui, ScreenDescriptor};
 use phantom_render::{create_render_backend, Backend};
 
 use crate::{Resources, State, StateMachine};
@@ -56,19 +57,25 @@ pub fn run(initial_state: impl State + 'static, config: AppConfig) -> Result<()>
 
     let mut window = window_builder.build(&event_loop)?;
 
-    let logical_size = window.inner_size();
-    let window_dimensions = [logical_size.width, logical_size.height];
+    let physical_size = window.inner_size();
+    let window_dimensions = [physical_size.width, physical_size.height];
     let mut renderer = create_render_backend(&config.render_backend, &window, &window_dimensions)?;
 
     let mut state_machine = StateMachine::new(initial_state);
 
     let mut gilrs = Gilrs::new().map_err(|_err| anyhow!("Failed to setup gamepad library!"))?;
 
+    let mut gui = Gui::new(ScreenDescriptor {
+        dimensions: physical_size,
+        scale_factor: window.scale_factor() as _,
+    });
+
     event_loop.run(move |event, _, control_flow| {
         let mut resources = Resources {
             window: &mut window,
             gilrs: &mut gilrs,
             renderer: &mut renderer,
+            gui: &mut gui,
         };
         if let Err(error) = run_loop(&mut state_machine, &event, &mut resources, control_flow) {
             log::error!("Application error: {}", error);
@@ -86,6 +93,8 @@ fn run_loop(
         state_machine.start(resources)?;
     }
 
+    resources.gui.handle_event(&event);
+
     state_machine
         .handle_event(resources, &event)
         .expect("Failed to handle event!");
@@ -100,10 +109,17 @@ fn run_loop(
         Event::MainEventsCleared => {
             state_machine.update(resources)?;
 
-            let dimensions = resources.window.inner_size();
+            let _frame_data = resources
+                .gui
+                .start_frame(resources.window.scale_factor() as _);
+
+            state_machine.update_gui(resources)?;
+
+            let paint_jobs = resources.gui.end_frame(&resources.window);
+
             resources
                 .renderer
-                .render(&[dimensions.width, dimensions.height])?;
+                .render(&resources.gui.context(), paint_jobs)?;
         }
 
         Event::WindowEvent {
@@ -111,6 +127,7 @@ fn run_loop(
             window_id,
         } if *window_id == resources.window.id() => match event {
             WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+
             WindowEvent::KeyboardInput { input, .. } => {
                 if let (Some(VirtualKeyCode::Escape), ElementState::Pressed) =
                     (input.virtual_keycode, input.state)
@@ -127,9 +144,16 @@ fn run_loop(
             }
 
             WindowEvent::DroppedFile(ref path) => {
+                // TODO: Transition if a state transition is returned
                 state_machine
                     .current_state()?
                     .on_file_dropped(resources, path)?;
+            }
+
+            WindowEvent::Resized(physical_size) => {
+                resources
+                    .renderer
+                    .resize([physical_size.width, physical_size.height]);
             }
 
             WindowEvent::ScaleFactorChanged {

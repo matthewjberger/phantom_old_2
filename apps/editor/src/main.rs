@@ -2,6 +2,7 @@ use phantom::{
     app::{run, AppConfig, Resources, State, Transition},
     dependencies::{
         anyhow::Result,
+        egui::{global_dark_light_mode_switch, menu, SidePanel, TopBottomPanel},
         gilrs::Event as GilrsEvent,
         log,
         winit::event::{ElementState, Event, KeyboardInput, MouseButton},
@@ -39,6 +40,41 @@ impl State for Editor {
         // TODO: Calculate delta time
         const DELTA_TIME: f32 = 0.001;
         self.world.tick(DELTA_TIME)?;
+        Ok(Transition::None)
+    }
+
+    fn update_gui(&mut self, resources: &mut Resources) -> Result<Transition> {
+        let ctx = &resources.gui.context();
+
+        TopBottomPanel::top("top_panel")
+            .resizable(true)
+            .show(ctx, |ui| {
+                menu::bar(ui, |ui| {
+                    global_dark_light_mode_switch(ui);
+                });
+            });
+
+        SidePanel::left("scene_explorer")
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.heading("Scene Explorer");
+                ui.allocate_space(ui.available_size());
+            });
+
+        SidePanel::right("inspector")
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.heading("Inspector");
+                ui.allocate_space(ui.available_size());
+            });
+
+        TopBottomPanel::bottom("console")
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.heading("Assets");
+                ui.allocate_space(ui.available_size());
+            });
+
         Ok(Transition::None)
     }
 

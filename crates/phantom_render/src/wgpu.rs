@@ -1,6 +1,8 @@
 use crate::{renderer::Renderer, texture::Texture};
 use phantom_dependencies::{
     anyhow::{Context, Result},
+    egui::{epaint::ClippedMesh, CtxRef},
+    egui_wgpu_backend::{RenderPass as GuiRenderPass, ScreenDescriptor},
     log, pollster,
     raw_window_handle::HasRawWindowHandle,
     wgpu::{self, Device, Queue, Surface, SurfaceConfiguration},
@@ -13,6 +15,7 @@ pub struct WgpuRenderer {
     config: SurfaceConfiguration,
     dimensions: [u32; 2],
     depth_texture: Texture,
+    gui_renderpass: GuiRenderPass,
 }
 
 impl Renderer for WgpuRenderer {
@@ -32,8 +35,8 @@ impl Renderer for WgpuRenderer {
         );
     }
 
-    fn render(&mut self, dimensions: &[u32; 2]) -> Result<()> {
-        match self.render_frame(dimensions) {
+    fn render(&mut self, gui_context: &CtxRef, paint_jobs: Vec<ClippedMesh>) -> Result<()> {
+        match self.render_frame(gui_context, paint_jobs) {
             Ok(_) => {}
             // Recreate the swapchain if lost
             Err(wgpu::SurfaceError::Lost) => self.resize(self.dimensions),
@@ -84,6 +87,8 @@ impl WgpuRenderer {
         let depth_texture =
             Texture::create_depth_texture(&device, dimensions[0], dimensions[1], "Depth Texture");
 
+        let gui_renderpass = GuiRenderPass::new(&device, config.format, 1);
+
         Ok(Self {
             surface,
             device,
@@ -91,6 +96,7 @@ impl WgpuRenderer {
             config,
             dimensions: *dimensions,
             depth_texture,
+            gui_renderpass,
         })
     }
 
@@ -139,12 +145,33 @@ impl WgpuRenderer {
             .context("Failed to request a device!")
     }
 
-    fn render_frame(&mut self, _dimensions: &[u32; 2]) -> Result<(), wgpu::SurfaceError> {
-        let frame = self.surface.get_current_texture()?;
+    fn render_frame(
+        &mut self,
+        gui_context: &CtxRef,
+        paint_jobs: Vec<ClippedMesh>,
+    ) -> Result<(), wgpu::SurfaceError> {
+        let surface_texture = self.surface.get_current_texture()?;
 
-        let view = frame
+        let view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let screen_descriptor = ScreenDescriptor {
+            physical_width: self.config.width,
+            physical_height: self.config.height,
+            scale_factor: 1.0, // TODO: Store the scale factor in the renderer and update it when winit reports that the scale factor has changed
+        };
+
+        self.gui_renderpass
+            .update_texture(&self.device, &self.queue, &gui_context.texture());
+        self.gui_renderpass
+            .update_user_textures(&self.device, &self.queue);
+        self.gui_renderpass.update_buffers(
+            &self.device,
+            &self.queue,
+            &paint_jobs,
+            &screen_descriptor,
+        );
 
         let mut encoder = self
             .device
@@ -182,8 +209,13 @@ impl WgpuRenderer {
             });
         }
 
+        encoder.insert_debug_marker("Render Gui");
+        self.gui_renderpass
+            .execute(&mut encoder, &view, &paint_jobs, &screen_descriptor, None)
+            .expect("Failed to execute the gui renderpass!");
+
         self.queue.submit(std::iter::once(encoder.finish()));
-        frame.present();
+        surface_texture.present();
 
         Ok(())
     }
