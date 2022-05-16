@@ -1,6 +1,7 @@
 use crate::Resources;
 use phantom_dependencies::{
     anyhow::{Context, Result},
+    gilrs::Event as GilrsEvent,
     winit::event::{ElementState, Event, KeyboardInput, MouseButton},
 };
 use std::path::PathBuf;
@@ -29,8 +30,12 @@ pub trait State {
         Ok(Transition::None)
     }
 
-    fn on_file_dropped(&mut self, _resources: &mut Resources, _path: &PathBuf) -> Result<()> {
-        Ok(())
+    fn on_file_dropped(
+        &mut self,
+        _resources: &mut Resources,
+        _path: &PathBuf,
+    ) -> Result<Transition> {
+        Ok(Transition::None)
     }
 
     fn on_mouse(
@@ -38,19 +43,23 @@ pub trait State {
         _resources: &mut Resources,
         _button: &MouseButton,
         _button_state: &ElementState,
-    ) -> Result<()> {
-        Ok(())
+    ) -> Result<Transition> {
+        Ok(Transition::None)
     }
 
-    fn on_key(&mut self, _resources: &mut Resources, _input: KeyboardInput) -> Result<()> {
-        Ok(())
+    fn on_key(&mut self, _resources: &mut Resources, _input: KeyboardInput) -> Result<Transition> {
+        Ok(Transition::None)
     }
 
-    fn handle_event(
+    fn on_gamepad_event(
         &mut self,
         _resources: &mut Resources,
-        _event: &Event<()>,
+        _event: GilrsEvent,
     ) -> Result<Transition> {
+        Ok(Transition::None)
+    }
+
+    fn on_event(&mut self, _resources: &mut Resources, _event: &Event<()>) -> Result<Transition> {
         Ok(Transition::None)
     }
 }
@@ -98,7 +107,7 @@ impl StateMachine {
     pub fn handle_event(&mut self, resources: &mut Resources, event: &Event<()>) -> Result<()> {
         if self.running {
             let transition = match self.states.last_mut() {
-                Some(state) => state.handle_event(resources, &event)?,
+                Some(state) => state.on_event(resources, &event)?,
                 None => Transition::None,
             };
             self.transition(transition, resources)?;

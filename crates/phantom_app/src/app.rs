@@ -1,6 +1,7 @@
 use phantom_dependencies::{
     anyhow::Result,
     env_logger,
+    gilrs::Gilrs,
     image::io::Reader,
     log,
     winit::{
@@ -54,9 +55,12 @@ pub fn run(initial_state: impl State + 'static, config: AppConfig) -> Result<()>
 
     let mut state_machine = StateMachine::new(initial_state);
 
+    let mut gilrs = Gilrs::new().expect("Failed to setup gamepad library!");
+
     event_loop.run(move |event, _, control_flow| {
         let mut resources = Resources {
             window: &mut window,
+            gilrs: &mut gilrs,
         };
         if let Err(error) = run_loop(&mut state_machine, &event, &mut resources, control_flow) {
             log::error!("Application error: {}", error);
@@ -77,6 +81,12 @@ fn run_loop(
     state_machine
         .handle_event(resources, &event)
         .expect("Failed to handle event!");
+
+    if let Some(event) = resources.gilrs.next_event() {
+        state_machine
+            .current_state()?
+            .on_gamepad_event(resources, event)?;
+    }
 
     match event {
         Event::MainEventsCleared => {

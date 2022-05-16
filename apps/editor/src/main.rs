@@ -2,6 +2,7 @@ use phantom::{
     app::{run, AppConfig, Resources, State, Transition},
     dependencies::{
         anyhow::Result,
+        gilrs::Event as GilrsEvent,
         log,
         winit::event::{ElementState, Event, KeyboardInput, MouseButton},
     },
@@ -39,12 +40,12 @@ impl State for Editor {
         &mut self,
         _resources: &mut Resources,
         path: &std::path::PathBuf,
-    ) -> Result<()> {
+    ) -> Result<Transition> {
         log::info!(
             "File dropped: {}",
             path.as_os_str().to_str().expect("Failed to convert path!")
         );
-        Ok(())
+        Ok(Transition::None)
     }
 
     fn on_mouse(
@@ -52,22 +53,27 @@ impl State for Editor {
         _resources: &mut Resources,
         button: &MouseButton,
         button_state: &ElementState,
-    ) -> Result<()> {
+    ) -> Result<Transition> {
         log::info!("Mouse event: {:#?} {:#?}", button, button_state,);
-        Ok(())
+        Ok(Transition::None)
     }
 
-    fn on_key(&mut self, _resources: &mut Resources, input: KeyboardInput) -> Result<()> {
+    fn on_key(&mut self, _resources: &mut Resources, input: KeyboardInput) -> Result<Transition> {
         log::info!("Key event received: {:#?}", input);
-        Ok(())
+        Ok(Transition::None)
     }
 
-    fn handle_event(
+    fn on_gamepad_event(
         &mut self,
         _resources: &mut Resources,
-        _event: &Event<()>,
+        event: GilrsEvent,
     ) -> Result<Transition> {
-        // log::info!("Event received: {:#?}", event);
+        let GilrsEvent { id, time, event } = event;
+        log::info!("{:?} New event from {}: {:?}", time, id, event);
+        Ok(Transition::None)
+    }
+
+    fn on_event(&mut self, _resources: &mut Resources, _event: &Event<()>) -> Result<Transition> {
         Ok(Transition::None)
     }
 }

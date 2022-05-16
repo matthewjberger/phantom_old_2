@@ -1,7 +1,8 @@
-use phantom_dependencies::{anyhow::Result, winit::window::Window};
+use phantom_dependencies::{anyhow::Result, gilrs::Gilrs, winit::window::Window};
 
 pub struct Resources<'a> {
     pub window: &'a mut Window,
+    pub gilrs: &'a mut Gilrs,
 }
 
 impl<'a> Resources<'a> {
