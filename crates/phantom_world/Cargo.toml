@@ -1,9 +1,7 @@
 [package]
-name = "phantom_app"
+name = "phantom_world"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 phantom_dependencies = { path = "../phantom_dependencies" }
-phantom_render = { path = "../phantom_render" }
-phantom_world = { path = "../phantom_world" }

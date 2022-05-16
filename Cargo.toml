@@ -10,3 +10,5 @@ members = ["crates/*", "apps/*"]
 [dependencies]
 phantom_app = {path = "crates/phantom_app"}
 phantom_dependencies = {path = "crates/phantom_dependencies"}
+phantom_render = {path = "crates/phantom_render"}
+phantom_world = {path = "crates/phantom_world"}

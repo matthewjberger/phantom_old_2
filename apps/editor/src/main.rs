@@ -6,10 +6,13 @@ use phantom::{
         log,
         winit::event::{ElementState, Event, KeyboardInput, MouseButton},
     },
+    world::World,
 };
 
 #[derive(Default)]
-struct Editor;
+struct Editor {
+    world: World,
+}
 
 impl State for Editor {
     fn on_start(&mut self, _resources: &mut Resources) -> Result<()> {
@@ -33,6 +36,9 @@ impl State for Editor {
     }
 
     fn update(&mut self, _resources: &mut Resources) -> Result<Transition> {
+        // TODO: Calculate delta time
+        const DELTA_TIME: f32 = 0.001;
+        self.world.tick(DELTA_TIME)?;
         Ok(Transition::None)
     }
 

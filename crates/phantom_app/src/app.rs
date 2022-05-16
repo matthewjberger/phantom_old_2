@@ -1,5 +1,5 @@
 use phantom_dependencies::{
-    anyhow::Result,
+    anyhow::{anyhow, Result},
     env_logger,
     gilrs::Gilrs,
     image::io::Reader,
@@ -62,7 +62,7 @@ pub fn run(initial_state: impl State + 'static, config: AppConfig) -> Result<()>
 
     let mut state_machine = StateMachine::new(initial_state);
 
-    let mut gilrs = Gilrs::new().expect("Failed to setup gamepad library!");
+    let mut gilrs = Gilrs::new().map_err(|_err| anyhow!("Failed to setup gamepad library!"))?;
 
     event_loop.run(move |event, _, control_flow| {
         let mut resources = Resources {
