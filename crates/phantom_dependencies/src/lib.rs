@@ -3,4 +3,7 @@ pub use env_logger;
 pub use gilrs;
 pub use image;
 pub use log;
+pub use pollster;
+pub use raw_window_handle;
+pub use wgpu;
 pub use winit;

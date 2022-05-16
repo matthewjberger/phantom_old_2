@@ -79,5 +79,11 @@ impl State for Editor {
 }
 
 fn main() -> Result<()> {
-    run(Editor::default(), AppConfig::default())
+    run(
+        Editor::default(),
+        AppConfig {
+            icon: Some("assets/icon/phantom.png".to_string()),
+            ..Default::default()
+        },
+    )
 }

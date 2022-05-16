@@ -1,8 +1,10 @@
 use phantom_dependencies::{anyhow::Result, gilrs::Gilrs, winit::window::Window};
+use phantom_render::Renderer;
 
 pub struct Resources<'a> {
     pub window: &'a mut Window,
     pub gilrs: &'a mut Gilrs,
+    pub renderer: &'a mut Box<dyn Renderer>,
 }
 
 impl<'a> Resources<'a> {
