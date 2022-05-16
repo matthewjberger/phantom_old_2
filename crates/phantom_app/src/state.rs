@@ -5,6 +5,9 @@ use phantom_dependencies::{
 };
 use std::path::PathBuf;
 
+pub struct EmptyState {}
+impl State for EmptyState {}
+
 pub trait State {
     fn on_start(&mut self, _resources: &mut Resources) -> Result<()> {
         Ok(())
@@ -73,16 +76,19 @@ impl StateMachine {
         }
     }
 
+    pub fn current_state(&mut self) -> Result<&mut Box<(dyn State + 'static)>> {
+        self.states
+            .last_mut()
+            .context("Tried to access state in state machine with no states present!")
+    }
+
     pub fn is_running(&self) -> bool {
         self.running
     }
 
     pub fn start(&mut self, resources: &mut Resources) -> Result<()> {
         if !self.running {
-            let state = self
-                .states
-                .last_mut()
-                .context("Tried to start state machine with no states present!")?;
+            let state = self.current_state()?;
             state.on_start(resources)?;
             self.running = true;
         }
@@ -130,7 +136,7 @@ impl StateMachine {
                 state.on_stop(resources)?;
             }
             self.states.push(state);
-            let new_state = self.states.last_mut().unwrap();
+            let new_state = self.current_state()?;
             new_state.on_start(resources)?;
         }
         Ok(())
@@ -138,11 +144,11 @@ impl StateMachine {
 
     fn push(&mut self, state: Box<dyn State>, resources: &mut Resources) -> Result<()> {
         if self.running {
-            if let Some(state) = self.states.last_mut() {
+            if let Ok(state) = self.current_state() {
                 state.on_pause(resources)?;
             }
             self.states.push(state);
-            let new_state = self.states.last_mut().unwrap();
+            let new_state = self.current_state()?;
             new_state.on_start(resources)?;
         }
         Ok(())
