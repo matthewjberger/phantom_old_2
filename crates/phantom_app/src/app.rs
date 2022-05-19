@@ -14,7 +14,7 @@ use phantom_dependencies::{
 use phantom_gui::{Gui, ScreenDescriptor};
 use phantom_render::{create_render_backend, Backend};
 
-use crate::{Resources, State, StateMachine};
+use crate::{Input, Resources, State, StateMachine, System};
 
 pub struct AppConfig {
     pub width: u32,
@@ -70,12 +70,17 @@ pub fn run(initial_state: impl State + 'static, config: AppConfig) -> Result<()>
         scale_factor: window.scale_factor() as _,
     });
 
+    let mut input = Input::default();
+    let mut system = System::new(window_dimensions);
+
     event_loop.run(move |event, _, control_flow| {
         let mut resources = Resources {
             window: &mut window,
             gilrs: &mut gilrs,
             renderer: &mut renderer,
             gui: &mut gui,
+            input: &mut input,
+            system: &mut system,
         };
         if let Err(error) = run_loop(&mut state_machine, &event, &mut resources, control_flow) {
             log::error!("Application error: {}", error);
