@@ -1,4 +1,6 @@
-use crate::{renderer::Renderer, texture::Texture};
+mod texture;
+
+use crate::renderer::Renderer;
 use phantom_dependencies::{
     anyhow::{Context, Result},
     egui::{epaint::ClippedMesh, CtxRef},
@@ -7,6 +9,7 @@ use phantom_dependencies::{
     raw_window_handle::HasRawWindowHandle,
     wgpu::{self, Device, Queue, Surface, SurfaceConfiguration},
 };
+use texture::Texture;
 
 pub struct WgpuRenderer {
     surface: Surface,
