@@ -1,6 +1,7 @@
 pub use anyhow;
 pub use bincode;
 pub use bmfont;
+pub use bytemuck;
 pub use egui;
 pub use egui_wgpu_backend;
 pub use egui_winit_platform;

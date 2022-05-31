@@ -1,4 +1,5 @@
 mod texture;
+mod uniform;
 mod world;
 
 use crate::renderer::Renderer;
