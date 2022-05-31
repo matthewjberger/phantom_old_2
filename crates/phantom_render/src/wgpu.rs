@@ -7,7 +7,7 @@ use phantom_dependencies::{
     egui_wgpu_backend::{RenderPass as GuiRenderPass, ScreenDescriptor},
     log, pollster,
     raw_window_handle::HasRawWindowHandle,
-    wgpu::{self, Device, Queue, Surface, SurfaceConfiguration},
+    wgpu::{self, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration},
 };
 use texture::Texture;
 
@@ -19,6 +19,7 @@ pub struct WgpuRenderer {
     dimensions: [u32; 2],
     depth_texture: Texture,
     gui_renderpass: GuiRenderPass,
+    render_pipeline: RenderPipeline,
 }
 
 impl Renderer for WgpuRenderer {
@@ -92,6 +93,66 @@ impl WgpuRenderer {
 
         let gui_renderpass = GuiRenderPass::new(&device, config.format, 1);
 
+        // Triangle Stuff
+
+        let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(
+                include_str!("../../../assets/shaders/shader.wgsl").into(),
+            ),
+        });
+
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[],
+                push_constant_ranges: &[],
+            });
+
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent::REPLACE,
+                        alpha: wgpu::BlendComponent::REPLACE,
+                    }),
+                    write_mask: wgpu::ColorWrites::ALL,
+                }],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                // Setting this to anything other than Fill requires Features::POLYGON_MODE_LINE
+                // or Features::POLYGON_MODE_POINT
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            // If the pipeline will be used with a multiview render pass, this
+            // indicates how many array layers the attachments will have.
+            multiview: None,
+        });
+
         Ok(Self {
             surface,
             device,
@@ -100,6 +161,7 @@ impl WgpuRenderer {
             dimensions: *dimensions,
             depth_texture,
             gui_renderpass,
+            render_pipeline,
         })
     }
 
@@ -186,7 +248,7 @@ impl WgpuRenderer {
 
         encoder.insert_debug_marker("Render Entities");
         {
-            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -201,15 +263,11 @@ impl WgpuRenderer {
                         store: true,
                     },
                 }],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: true,
-                    }),
-                    stencil_ops: None,
-                }),
+                depth_stencil_attachment: None,
             });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.draw(0..3, 0..1);
         }
 
         encoder.insert_debug_marker("Render Gui");
