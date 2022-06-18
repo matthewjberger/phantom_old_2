@@ -36,10 +36,8 @@ impl State for Editor {
         Ok(())
     }
 
-    fn update(&mut self, _resources: &mut Resources) -> Result<Transition> {
-        // TODO: Calculate delta time
-        const DELTA_TIME: f32 = 0.001;
-        self.world.tick(DELTA_TIME)?;
+    fn update(&mut self, resources: &mut Resources) -> Result<Transition> {
+        self.world.tick(resources.system.delta_time as _)?;
         Ok(Transition::None)
     }
 
